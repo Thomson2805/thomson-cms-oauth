@@ -149,53 +149,69 @@ module.exports = async function handler(req, res) {
 
         <script>
           (function () {
-            var accessToken =
-              ${JSON.stringify(accessToken)};
+            var content = {
+              token: ${JSON.stringify(accessToken)},
+              provider: "github"
+            };
 
-            var simpleMessage =
-              "authorization:github:" +
-              accessToken;
+            var completed = false;
 
-            var structuredMessage =
-              "authorization:github:success:" +
-              JSON.stringify({
-                token: accessToken,
-                provider: "github"
-              });
-
-            var attempts = 0;
-
-            function sendAuthentication() {
-              attempts += 1;
-
+            function receiveMessage(event) {
               if (
-                window.opener &&
-                !window.opener.closed
+                completed ||
+                !window.opener ||
+                window.opener.closed
               ) {
-                window.opener.postMessage(
-                  simpleMessage,
-                  "*"
-                );
-
-                window.opener.postMessage(
-                  structuredMessage,
-                  "*"
-                );
+                return;
               }
 
-              if (attempts < 20) {
-                setTimeout(
-                  sendAuthentication,
-                  300
+              completed = true;
+
+              window.opener.postMessage(
+                "authorization:github:success:" +
+                JSON.stringify(content),
+                event.origin
+              );
+
+              setTimeout(function () {
+                window.close();
+              }, 1000);
+            }
+
+            window.addEventListener(
+              "message",
+              receiveMessage,
+              false
+            );
+
+            function beginHandshake() {
+              if (
+                window.opener &&
+                !window.opener.closed &&
+                !completed
+              ) {
+                window.opener.postMessage(
+                  "authorizing:github",
+                  "*"
                 );
-              } else {
-                setTimeout(function () {
-                  window.close();
-                }, 1000);
               }
             }
 
-            sendAuthentication();
+            beginHandshake();
+
+            var handshakeInterval =
+              setInterval(function () {
+                if (completed) {
+                  clearInterval(handshakeInterval);
+                  return;
+                }
+
+                beginHandshake();
+              }, 500);
+
+            setTimeout(function () {
+              clearInterval(handshakeInterval);
+            }, 15000);
           })();
         <\/script>
       </body>
