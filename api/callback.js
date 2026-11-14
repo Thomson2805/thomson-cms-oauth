@@ -22,21 +22,11 @@ module.exports = async function handler(req, res) {
     "oauth_state"
   );
 
-  const storedOrigin = getCookie(
-    req.headers.cookie,
-    "oauth_origin"
-  );
-
   const clientId =
     process.env.OAUTH_GITHUB_CLIENT_ID;
 
   const clientSecret =
     process.env.OAUTH_GITHUB_CLIENT_SECRET;
-
-  const adminOrigin =
-    storedOrigin ||
-    process.env.ADMIN_ORIGIN ||
-    "https://thomsonportofolio.vercel.app";
 
   if (!code) {
     return res
@@ -52,7 +42,7 @@ module.exports = async function handler(req, res) {
     return res
       .status(400)
       .send(
-        "Invalid OAuth state. Start again from the CMS login page."
+        "Invalid OAuth state. Please restart the login process."
       );
   }
 
@@ -111,6 +101,10 @@ module.exports = async function handler(req, res) {
       <html lang="en">
       <head>
         <meta charset="utf-8">
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1"
+        >
 
         <title>Authentication Successful</title>
 
@@ -126,12 +120,16 @@ module.exports = async function handler(req, res) {
           }
 
           .message {
-            max-width: 440px;
+            width: min(440px, 80%);
             padding: 32px;
             text-align: center;
             background: #0d1c2e;
             border: 1px solid #20374e;
             border-radius: 14px;
+          }
+
+          h1 {
+            margin-top: 0;
           }
 
           p {
@@ -152,16 +150,18 @@ module.exports = async function handler(req, res) {
 
         <script>
           (function () {
-            var targetOrigin =
-              ${JSON.stringify(adminOrigin)};
+            var authData = {
+              token: ${JSON.stringify(accessToken)},
+              provider: "github"
+            };
 
             var message =
-              "authorization:github:" +
-              ${JSON.stringify(accessToken)};
+              "authorization:github:success:" +
+              JSON.stringify(authData);
 
             var attempts = 0;
 
-            function sendToken() {
+            function sendAuthentication() {
               attempts += 1;
 
               if (
@@ -170,12 +170,15 @@ module.exports = async function handler(req, res) {
               ) {
                 window.opener.postMessage(
                   message,
-                  targetOrigin
+                  "*"
                 );
               }
 
-              if (attempts < 15) {
-                setTimeout(sendToken, 300);
+              if (attempts < 20) {
+                setTimeout(
+                  sendAuthentication,
+                  300
+                );
               } else {
                 setTimeout(function () {
                   window.close();
@@ -183,7 +186,7 @@ module.exports = async function handler(req, res) {
               }
             }
 
-            sendToken();
+            sendAuthentication();
           })();
         <\/script>
       </body>
@@ -198,7 +201,7 @@ module.exports = async function handler(req, res) {
     return res
       .status(500)
       .send(
-        "OAuth callback failed. Check the Vercel logs."
+        "OAuth callback failed. Check the Vercel function logs."
       );
   }
 };
