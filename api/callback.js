@@ -79,9 +79,7 @@ module.exports = async function handler(req, res) {
 
       return res
         .status(401)
-        .send(
-          "GitHub did not return an access token."
-        );
+        .send("GitHub did not return an access token.");
     }
 
     const accessToken = tokenData.access_token;
@@ -101,6 +99,7 @@ module.exports = async function handler(req, res) {
       <html lang="en">
       <head>
         <meta charset="utf-8">
+
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1"
@@ -150,14 +149,19 @@ module.exports = async function handler(req, res) {
 
         <script>
           (function () {
-            var authData = {
-              token: ${JSON.stringify(accessToken)},
-              provider: "github"
-            };
+            var accessToken =
+              ${JSON.stringify(accessToken)};
 
-            var message =
+            var simpleMessage =
+              "authorization:github:" +
+              accessToken;
+
+            var structuredMessage =
               "authorization:github:success:" +
-              JSON.stringify(authData);
+              JSON.stringify({
+                token: accessToken,
+                provider: "github"
+              });
 
             var attempts = 0;
 
@@ -169,7 +173,12 @@ module.exports = async function handler(req, res) {
                 !window.opener.closed
               ) {
                 window.opener.postMessage(
-                  message,
+                  simpleMessage,
+                  "*"
+                );
+
+                window.opener.postMessage(
+                  structuredMessage,
                   "*"
                 );
               }
@@ -182,7 +191,7 @@ module.exports = async function handler(req, res) {
               } else {
                 setTimeout(function () {
                   window.close();
-                }, 500);
+                }, 1000);
               }
             }
 
@@ -201,7 +210,7 @@ module.exports = async function handler(req, res) {
     return res
       .status(500)
       .send(
-        "OAuth callback failed. Check the Vercel function logs."
+        "OAuth callback failed. Check the Vercel logs."
       );
   }
 };
